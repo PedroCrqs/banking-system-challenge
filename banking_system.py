@@ -22,8 +22,7 @@ def ask_menu():
 while (menuLoop):
     if (user_name):
         try:
-            menu = int(input(f'''
-                         
+            menu = int(input(f'''     
               Hello {user_name}! Chose one number:
               
                 1. for balance
@@ -64,9 +63,9 @@ while (menuLoop):
             else:
                 balance -= withdraw_value
                 withdraw_times += 1
-                toDo = int(input(f'''
+                print(f'''
                       
-              Sucessfull withdraw! Your balance: R$ {balance}'''))  
+              Sucessfull withdraw! Your balance: R$ {balance}''')  
                 if ask_menu():
                     menuLoop = True
                 else:
@@ -84,9 +83,9 @@ while (menuLoop):
                 continue
             else:
                 balance += deposit_value
-                toDo = int(input(f'''
+                print(f'''
                       
-              Sucessfull deposit! Your balance: R$ {balance}'''))    
+              Sucessfull deposit! Your balance: R$ {balance}''')    
                 if ask_menu():
                     menuLoop = True
                 else:
