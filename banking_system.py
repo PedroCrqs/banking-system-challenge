@@ -7,10 +7,12 @@ WITHDRAW_LIMIT = 500
 WITHDRAW_TIMES_LIMIT = 3
 withdraw_times = 0
 menuLoop = True
+extract = ['''
+              Extract:
+              ''']
 
 def ask_menu():
-    toDo = int(input('''
-                     
+    toDo = int(input('''      
               What do you want to do?
                       
                 1. for menu
@@ -25,10 +27,10 @@ while (menuLoop):
             menu = int(input(f'''     
               Hello {user_name}! Chose one number:
               
-                1. for balance
-                2. for withdraw
-                3. for deposit
-                4. for end       
+                1. for Extract
+                2. for Withdraw
+                3. for Deposit
+                4. for End       
                          
 
               ''')
@@ -38,9 +40,9 @@ while (menuLoop):
               Please enter a valid number.''')    
             continue 
         if (menu == 1):
-            print(f'''
-              Balance: R$ {balance}
-                 ''')
+            print(f'''  
+             {''.join(extract)}     
+                             ''')
             if ask_menu():
                 menuLoop = True
             else:
@@ -63,6 +65,9 @@ while (menuLoop):
             else:
                 balance -= withdraw_value
                 withdraw_times += 1
+                extract.append(f'''
+              R$ -{withdraw_value}
+              Balance: {balance}''')
                 print(f'''
                       
               Sucessfull withdraw! Your balance: R$ {balance}''')  
@@ -83,6 +88,8 @@ while (menuLoop):
                 continue
             else:
                 balance += deposit_value
+                extract.append(f'''
+              R$ +{deposit_value}''')
                 print(f'''
                       
               Sucessfull deposit! Your balance: R$ {balance}''')    
