@@ -18,6 +18,19 @@ def ask_menu():
                       
               '''))
     return toDo == 1
+
+def withdraw(balance: int, withdraw_limit: int, withdraw_times: int, withdraw_times_limit: int, withdraw_value: int) -> tuple:
+    if withdraw_value <= 0:
+        print('Please enter a positive value.')
+        return
+    elif (withdraw_value > balance or withdraw_value > withdraw_limit or withdraw_times >= withdraw_times_limit):
+        print('Unauthorized transaction')
+        return
+    else:
+        balance -= withdraw_value
+        withdraw_times += 1
+        print(f'Sucessfull withdraw! Your balance: R$ {balance}')
+        return balance, withdraw_times
     
 while (menuLoop):
     if (user_name):
@@ -45,31 +58,17 @@ while (menuLoop):
                 menuLoop = True
             else:
                 menuLoop = False 
+        
         elif (menu == 2):
             try:
                 withdraw_value = int(input('''
               Value: R$ '''))
             except ValueError:
                 print('''
-              Please enter a valid number.''')                   
-                continue    
-            if withdraw_value <= 0:
-                print('''
-              Please enter a positive value.''')
+              Please enter a valid number.''')
                 continue
-            elif (withdraw_value > balance or withdraw_value > WITHDRAW_LIMIT or withdraw_times >= WITHDRAW_TIMES_LIMIT):
-                print('''
-              Unauthorized transaction''')
-            else:
-                balance -= withdraw_value
-                withdraw_times += 1
-                print(f'''
-                      
-              Sucessfull withdraw! Your balance: R$ {balance}''')  
-                if ask_menu():
-                    menuLoop = True
-                else:
-                    menuLoop = False 
+            withdraw(balance, WITHDRAW_LIMIT, withdraw_times, WITHDRAW_TIMES_LIMIT, withdraw_value)
+
         elif (menu == 3):
             try:
                 deposit_value = int(input('''
