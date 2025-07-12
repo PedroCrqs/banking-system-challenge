@@ -115,7 +115,7 @@ while True: #=== Main system loop ===
             exit()    
 
     def withdraw(balance: int, extract: list, withdraw_limit: int, withdraw_times: int, withdraw_times_limit: int, withdraw_value: int) -> tuple:
-        if withdraw_value <= 0: #===function to withdraw money===
+        if withdraw_value <= 0: #=== Function to withdraw money ===
             print('''
                 Please enter a positive value.              
                 ''')
@@ -136,7 +136,7 @@ while True: #=== Main system loop ===
                 ''')
             return balance, extract, withdraw_times
 
-    def deposit(deposit_value, balance, extract): #===function to deposit money===
+    def deposit(deposit_value, balance, extract): #=== Function to deposit money ===
         global menuLoop    
         if deposit_value <= 0:
             print('Please enter a positive value.')
