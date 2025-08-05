@@ -15,13 +15,13 @@ extract = []
 accounts = []
 WITHDRAW_LIMIT = 500
 WITHDRAW_TIMES_LIMIT = 3
+account_menu = True
+menu_loop = True
 
-def logout(): #=== Function to logout user ===
+def logout(): #=== Logout ===
         print('''
                 Logging out!''')
-        global account_menu, menu_loop
-        menu_loop = False
-        account_menu = False
+        return False, False
 
 def ask_menu(): #=== Function to ask if the user wants to continue or end system ===
     toDo = int(input('''      
@@ -32,8 +32,7 @@ def ask_menu(): #=== Function to ask if the user wants to continue or end system
                     
             '''))
     if (toDo == 1):
-        global menu_loop
-        menu_loop = True
+        return True
     elif (toDo == 2):
         print('''
             Thanks for using FuBank system! See you later!''')
@@ -244,7 +243,7 @@ while True: #=== Main system loop ===
                 print(f'''  
                 {''.join(current_user['extract'])}     
                                 ''')
-                ask_menu() 
+                menu_loop = ask_menu() 
             
             elif (menu == 2): #=== Withdraw option ===
                 try:
@@ -257,7 +256,7 @@ while True: #=== Main system loop ===
                 result = withdraw(current_user['balance'], current_user['extract'], WITHDRAW_LIMIT, current_user['withdraw_times'], WITHDRAW_TIMES_LIMIT, withdraw_value)
                 if result:
                     current_user['balance'], current_user['extract'], current_user['withdraw_times'] = result
-                    ask_menu()
+                    menu_loop = ask_menu()
 
             elif (menu == 3): #=== Deposit option ===
                 try:
@@ -271,12 +270,12 @@ while True: #=== Main system loop ===
                 result = deposit(deposit_value, current_user['balance'], current_user['extract'])
                 if result:
                     current_user['balance'], current_user['extract'] = result
-                    ask_menu()
+                    menu_loop = ask_menu()
 
-            elif (menu == 4): #=== Logout option ===
-                logout()
+            elif (menu == 4): 
+                account_menu, menu_loop = logout() 
                         
-            elif (menu == 5): #=== End option ===
+            elif (menu == 5): 
                 print('''
                 Thanks for using FuBank system! See you later!''')
                 exit()
