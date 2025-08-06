@@ -23,7 +23,7 @@ def logout(): #=== Logout ===
                 Logging out!''')
         return False, False
 
-def ask_menu(): #=== Function to ask if the user wants to continue or end system ===
+def ask_menu(): 
     toDo = int(input('''      
             What do you want to do?
                     
@@ -38,7 +38,7 @@ def ask_menu(): #=== Function to ask if the user wants to continue or end system
             Thanks for using FuBank system! See you later!''')
         exit()    
 
-def withdraw(balance: int, extract: list, withdraw_limit: int, withdraw_times: int, withdraw_times_limit: int, withdraw_value: int) -> tuple:
+def withdraw(balance, extract, withdraw_limit, withdraw_times, withdraw_times_limit, withdraw_value):
     if withdraw_value <= 0: #=== Function to withdraw money ===
         print('''
             Please enter a positive value.              
