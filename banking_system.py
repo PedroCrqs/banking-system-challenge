@@ -1,22 +1,84 @@
 
 #=== Banking System Challenge ===
 
-user_name = ''
-password = ''
-name = ''
-cpf = 0
-birthday = ''
-address = ''
-new_user = {}
-all_users = []
-balance = 0
-withdraw_times = 0
-extract = []
-accounts = []
-WITHDRAW_LIMIT = 500
-WITHDRAW_TIMES_LIMIT = 3
+class Main_System:
+    
+    def __init__(self):
+        self.all_users = []
+        self.accounts =  []
+        self.current_user = {}
+        self.current_account = {}
+
+    def __new_user__(self, user_name='', password='', name='', cpf='', birthday='', address=''):
+        if (user_name and password and name and cpf and birthday and address):
+            new_user = {
+                    'user_name': user_name,
+                    'password': password,
+                    'name': name,
+                    'cpf': cpf,
+                    'birthday': birthday,
+                    'address': address,
+                }
+            print('''
+                User registered successfuly!''')
+            main_system.all_users.append(new_user)
+        else:
+            print('''
+                Please fill in all fields.''')
+
+    def __login__(self, user_name='', password=''):
+        if (user_name == '' or password == ''):
+                print('''
+                Please enter a valid username and password.''')
+        elif (user_name and password):
+            found = False
+            for user in main_system.all_users:
+                if user_name == user['user_name'] and password == user['password']:
+                    print('''
+                Login successful!''')
+                    found = True
+                    main_system.current_user = user
+                    return False
+            if not found:
+                print('''
+                Invalid username or password.''')
+                return True
+                    
+                                 
+    def __new_account__(self):
+        account_number = len(main_system.accounts) + 1
+        main_system.accounts.append({
+                    'agency': '0001',
+                    'account_number': account_number,
+                    'user_name': main_system.current_user['user_name'],
+                    'balance': 0,
+                    'withdraw_times': 0,
+                    'extract': []
+                })
+        print(f'''
+                Account created successfuly!
+                Your agency is: 0001
+                Your account number is: {account_number}''')
+
+    def __enter_account__(self):
+        if not main_system.accounts:
+                print('''
+                You have no accounts yet! Please create one.''')
+        main_system.current_account = int(input('''
+                Agency: 0001
+                Choose an account number: '''))
+        if main_system.current_account < 0:
+            print('''
+                Invalid account number.''')
+                    
+        else:
+            main_system.current_user.update(main_system.accounts[main_system.current_account - 1])    
+        
 account_menu = True
 menu_loop = True
+main_system = Main_System()
+login = True   
+
 
 def logout(): #=== Logout ===
         print('''
@@ -74,10 +136,6 @@ def deposit(deposit_value, balance, extract): #=== Function to deposit money ===
         return balance, extract
 
 while True: #=== Main system loop ===
-    current_user = {}
-    account_menu = True
-    login = True
-    menu_loop = True
 
     #=== Login page Loop ===
 
@@ -94,24 +152,8 @@ while True: #=== Main system loop ===
                 Username: ''')
             password = input('''
                 Password: ''')
-            if (user_name == "" or password == ''):
-                print('''
-                Please enter a valid username and password.''')
-            elif (user_name and password):
-                found = False
-                for user in all_users:
-                    if user_name == user['user_name'] and password == user['password']:
-                        print('''
-                Login successful!''')
-                        found = True
-                        login = False
-                        current_user = user
-                        break
-
-                if not found:
-                    print('''
-                Invalid username or password.''')
-                    continue
+            login = main_system.__login__(user_name, password)
+            continue            
             
         elif (welcome == 2):
             user_name = input('''
@@ -126,24 +168,8 @@ while True: #=== Main system loop ===
                 Birthday(dd/mm/yy): ''')
             address = input('''
                 Address(st - num - district - city / state): ''')
-            if (user_name and password and name and cpf and birthday and address):
-                new_user = {
-                    'user_name': user_name,
-                    'password': password,
-                    'name': name,
-                    'cpf': cpf,
-                    'birthday': birthday,
-                    'address': address,
-                }
-                print('''
-                User registered successfuly!''')
-                all_users.append(new_user)            
-                continue
-            else:
-                print('''
-                Please fill in all fields.''')
-                continue
-        
+            main_system.__new_user__(user_name, password, name, cpf, birthday, address)
+            continue
         else:
             print('''
                 Please enter a valid option.''')
@@ -155,10 +181,10 @@ while True: #=== Main system loop ===
 
     while(account_menu): 
         current_account = {}
-        if (current_user):
+        if (main_system.current_user):
             try:
                 menu = int(input(f'''     
-                Hello {current_user['name'].split()[0]}! Chose one number:
+                Hello {main_system.current_user['name'].split()[0]}! Chose one number:
 
                     1. for Enter an existent account
                     2. for Create a new account
@@ -173,35 +199,11 @@ while True: #=== Main system loop ===
                 continue 
 
             if (menu == 1): #=== Enter an existent account option ===
-                if not accounts:
-                    print('''
-                You have no accounts yet! Please create one.''')
-                    continue
-                current_account = int(input('''
-                Agency: 0001
-                Choose an account number: '''))
-                if current_account < 0:
-                    print('''
-                Invalid account number.''')
-                    continue
-                else:
-                    current_user.update(accounts[current_account - 1])
-                    break
+                main_system.__enter_account__()
+                break
 
             elif (menu == 2): #=== Create a new account option ===
-                account_number = len(accounts) + 1
-                accounts.append({
-                    'agency': '0001',
-                    'account_number': account_number,
-                    'user_name': current_user['user_name'],
-                    'balance': 0,
-                    'withdraw_times': 0,
-                    'extract': []
-                })
-                print(f'''
-                Account created successfuly!
-                Your agency is: 0001
-                Your account number is: {account_number}''')
+                main_system.__new_account__()
                 continue
             
             elif (menu == 3): #=== Logout option ===
@@ -222,10 +224,10 @@ while True: #=== Main system loop ===
     #=== Main account Menu Loop ===
 
     while (menu_loop):
-        if (current_user):
+        if (main_system.current_user):
             try:
                 menu = int(input(f'''     
-                Welcome to account number {current_user['account_number']}! Choose one number:
+                Welcome to account number {main_system.current_user['account_number']}! Choose one number:
 
                     1. for Extract
                     2. for Withdraw
@@ -241,7 +243,7 @@ while True: #=== Main system loop ===
                 continue 
             if (menu == 1): #=== Extract option ===
                 print(f'''  
-                {''.join(current_user['extract'])}     
+                {''.join(main_system.current_user['extract'])}     
                                 ''')
                 menu_loop = ask_menu() 
             
@@ -253,9 +255,9 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')
                     continue
-                result = withdraw(current_user['balance'], current_user['extract'], WITHDRAW_LIMIT, current_user['withdraw_times'], WITHDRAW_TIMES_LIMIT, withdraw_value)
+                result = withdraw(main_system.current_user['balance'], main_system.current_user['extract'], WITHDRAW_LIMIT, main_system.current_user['withdraw_times'], WITHDRAW_TIMES_LIMIT, withdraw_value)
                 if result:
-                    current_user['balance'], current_user['extract'], current_user['withdraw_times'] = result
+                    main_system.current_user['balance'], main_system.current_user['extract'], main_system.current_user['withdraw_times'] = result
                     menu_loop = ask_menu()
 
             elif (menu == 3): #=== Deposit option ===
