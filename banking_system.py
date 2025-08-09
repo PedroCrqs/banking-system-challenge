@@ -1,5 +1,9 @@
-
 #=== Banking System Challenge ===
+
+menu_user = True
+account_menu = True
+main_menu = True
+
 
 class Main_System:
     
@@ -8,8 +12,10 @@ class Main_System:
         self.accounts =  []
         self.current_user = {}
         self.current_account = {}
-
-    def __new_user__(self, user_name='', password='', name='', cpf='', birthday='', address=''):
+        self.withdraw_limit = 500
+        self.WITHDRAW_TIMES_LIMIT = 3
+        
+    def __new_user__(self, user_name, password, name, cpf=int, birthday=int, address=''):
         if (user_name and password and name and cpf and birthday and address):
             new_user = {
                     'user_name': user_name,
@@ -38,11 +44,11 @@ class Main_System:
                 Login successful!''')
                     found = True
                     main_system.current_user = user
-                    return False
+                    return False, True, True
             if not found:
                 print('''
                 Invalid username or password.''')
-                return True
+                return True, False, False
                     
                                  
     def __new_account__(self):
@@ -72,89 +78,95 @@ class Main_System:
                 Invalid account number.''')
                     
         else:
-            main_system.current_user.update(main_system.accounts[main_system.current_account - 1])    
-        
-account_menu = True
-menu_loop = True
+            main_system.current_user.update(main_system.accounts[main_system.current_account - 1])
+            return False, False, True
+
+    def __withdraw__(self, withdraw_value=0):
+        idx = main_system.current_account - 1
+        account = main_system.accounts[idx]
+        if withdraw_value <= 0:
+            print('''
+                Please enter a positive value.              
+            ''')
+            return
+        elif (withdraw_value > account['balance'] or withdraw_value > self.withdraw_limit or account['withdraw_times'] >= self.WITHDRAW_TIMES_LIMIT):
+            print('''
+                Unauthorized transaction              
+            ''')
+            return
+        else:
+            account['balance'] -= withdraw_value
+            account['withdraw_times'] += 1
+            account['extract'].append(f'''
+                Withdraw: R$ -{withdraw_value}
+                Balance: R$ {account['balance']}''')
+            print(f'''
+                Successful withdraw! Your balance: R$ {account['balance']}
+            ''')
+            main_system.current_user.update(account)
+            return
+
+    def __deposit__(self, deposit_value=0):
+        idx = main_system.current_account - 1
+        account = main_system.accounts[idx]
+        if deposit_value <= 0:
+            print('Please enter a positive value.')
+            return
+        else:
+            account['balance'] += deposit_value
+            account['extract'].append(f'''
+                Deposit: R$ +{deposit_value}
+                Balance: R$ {account['balance']}''')
+            print(f'''                      
+                Successful deposit! Your balance: R$ {account['balance']}''')
+            main_system.current_user.update(account)
+            return
+
+    def __ask_menu__(self): 
+        end_menu = int(input('''      
+                What do you want to do?
+                        
+                    1. for menu
+                    2. for end
+                        
+                '''))
+        if (end_menu == 1):
+            return True
+        elif (end_menu == 2):
+            print('''
+                Thanks for using FuBank system! See you later!''')
+            exit()    
+
+    def __user_logout__(self): 
+        print('''
+                Logging user out!''')
+        return True, False, False
+
+    def __account_logout__(self): 
+            print('''
+                Logging account out!''')
+            return False, True, False
+
 main_system = Main_System()
-login = True   
-
-
-def logout(): #=== Logout ===
-        print('''
-                Logging out!''')
-        return False, False
-
-def ask_menu(): 
-    toDo = int(input('''      
-            What do you want to do?
-                    
-                1. for menu
-                2. for end
-                    
-            '''))
-    if (toDo == 1):
-        return True
-    elif (toDo == 2):
-        print('''
-            Thanks for using FuBank system! See you later!''')
-        exit()    
-
-def withdraw(balance, extract, withdraw_limit, withdraw_times, withdraw_times_limit, withdraw_value):
-    if withdraw_value <= 0: #=== Function to withdraw money ===
-        print('''
-            Please enter a positive value.              
-            ''')
-        return
-    elif (withdraw_value > balance or withdraw_value > withdraw_limit or withdraw_times >= withdraw_times_limit):
-        print('''
-            Unauthorized transaction              
-            ''')
-        return
-    else:
-        balance -= withdraw_value
-        withdraw_times += 1
-        extract.append(f'''
-            Withdraw: R$ -{withdraw_value}
-            Balance: R$ {balance}''')
-        print(f'''
-            Successful withdraw! Your balance: R$ {balance}
-            ''')
-        return balance, extract, withdraw_times
-
-def deposit(deposit_value, balance, extract): #=== Function to deposit money ===  
-    if deposit_value <= 0:
-        print('Please enter a positive value.')
-        return
-    else:
-        balance += deposit_value
-        extract.append(f'''
-            Deposit: R$ +{deposit_value}
-            Balance: R$ {balance}''')
-        print(f'''                      
-            Successful deposit! Your balance: R$ {balance}''')    
-        return balance, extract
 
 while True: #=== Main system loop ===
 
     #=== Login page Loop ===
 
-    while(login):
+    while(menu_user):
         welcome = int(input('''
                 Hello, welcome to the FuBank!
-                1. for login
-                2. for register
+                    1. for login
+                    2. for register
                         
                 '''))
-
         if (welcome == 1):
             user_name = input('''
                 Username: ''')
             password = input('''
                 Password: ''')
-            login = main_system.__login__(user_name, password)
-            continue            
-            
+            menu_user, account_menu, main_menu = main_system.__login__(user_name, password)
+            continue                     
         elif (welcome == 2):
             user_name = input('''
                 Choose a username: ''')
@@ -197,23 +209,17 @@ while True: #=== Main system loop ===
                 print('''
                 Please enter a valid number.''')    
                 continue 
-
-            if (menu == 1): #=== Enter an existent account option ===
-                main_system.__enter_account__()
-                break
-
-            elif (menu == 2): #=== Create a new account option ===
+            if (menu == 1): 
+                menu_user, account_menu, main_menu = main_system.__enter_account__()                              
+            elif (menu == 2): 
                 main_system.__new_account__()
                 continue
-            
-            elif (menu == 3): #=== Logout option ===
-                logout()
-                                        
-            elif (menu == 4): #=== End option ===
+            elif (menu == 3):
+                menu_user, account_menu, main_menu = main_system.__user_logout__()
+            elif (menu == 4):
                 print('''
                 Thanks for using FuBank system! See you later!''')
                 exit()
-
             else:    
                 print('''
                 Please chose one valid option''')
@@ -221,9 +227,9 @@ while True: #=== Main system loop ===
 
     #=== Account Menu Loop End ===            
 
-    #=== Main account Menu Loop ===
+    #=== Transaction Menu Loop ===
 
-    while (menu_loop):
+    while (main_menu):
         if (main_system.current_user):
             try:
                 menu = int(input(f'''     
@@ -241,13 +247,12 @@ while True: #=== Main system loop ===
                 print('''
                 Please enter a valid number.''')    
                 continue 
-            if (menu == 1): #=== Extract option ===
+            if (menu == 1): 
                 print(f'''  
                 {''.join(main_system.current_user['extract'])}     
                                 ''')
-                menu_loop = ask_menu() 
-            
-            elif (menu == 2): #=== Withdraw option ===
+                main_menu = main_system.__ask_menu__() 
+            elif (menu == 2): 
                 try:
                     withdraw_value = int(input('''
                 Value: R$ '''))
@@ -255,12 +260,9 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')
                     continue
-                result = withdraw(main_system.current_user['balance'], main_system.current_user['extract'], WITHDRAW_LIMIT, main_system.current_user['withdraw_times'], WITHDRAW_TIMES_LIMIT, withdraw_value)
-                if result:
-                    main_system.current_user['balance'], main_system.current_user['extract'], main_system.current_user['withdraw_times'] = result
-                    menu_loop = ask_menu()
-
-            elif (menu == 3): #=== Deposit option ===
+                main_system.__withdraw__(withdraw_value)
+                main_menu = main_system.__ask_menu__()
+            elif (menu == 3): 
                 try:
                     deposit_value = int(input('''
                 Value: R$ '''))
@@ -268,22 +270,17 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')                       
                     continue
-
-                result = deposit(deposit_value, current_user['balance'], current_user['extract'])
-                if result:
-                    current_user['balance'], current_user['extract'] = result
-                    menu_loop = ask_menu()
-
+                main_system.__deposit__(deposit_value)
+                main_menu = main_system.__ask_menu__()
             elif (menu == 4): 
-                account_menu, menu_loop = logout() 
-                        
+                menu_user, account_menu, main_menu = main_system.__account_logout__() 
             elif (menu == 5): 
                 print('''
                 Thanks for using FuBank system! See you later!''')
                 exit()
-
             else:    
                 print('''
                 Please chose one valid option''')
                 continue
 
+#=== Transaction Menu Loop ends ===
