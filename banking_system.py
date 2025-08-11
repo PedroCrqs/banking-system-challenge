@@ -15,7 +15,7 @@ class Main_System:
         self.withdraw_limit = 500
         self.WITHDRAW_TIMES_LIMIT = 3
         
-    def __new_user__(self, user_name, password, name, cpf=int, birthday=int, address=''):
+    def new_user(self, user_name, password, name, cpf:int, birthday:int, address):
         if (user_name and password and name and cpf and birthday and address):
             new_user = {
                     'user_name': user_name,
@@ -27,23 +27,23 @@ class Main_System:
                 }
             print('''
                 User registered successfuly!''')
-            main_system.all_users.append(new_user)
+            self.all_users.append(new_user)
         else:
             print('''
                 Please fill in all fields.''')
 
-    def __login__(self, user_name='', password=''):
+    def login(self, user_name='', password=''):
         if (user_name == '' or password == ''):
                 print('''
                 Please enter a valid username and password.''')
         elif (user_name and password):
             found = False
-            for user in main_system.all_users:
+            for user in self.all_users:
                 if user_name == user['user_name'] and password == user['password']:
                     print('''
                 Login successful!''')
                     found = True
-                    main_system.current_user = user
+                    self.current_user = user
                     return False, True, True
             if not found:
                 print('''
@@ -51,12 +51,12 @@ class Main_System:
                 return True, False, False
                     
                                  
-    def __new_account__(self):
-        account_number = len(main_system.accounts) + 1
-        main_system.accounts.append({
+    def new_account(self):
+        account_number = len(self.accounts) + 1
+        self.accounts.append({
                     'agency': '0001',
                     'account_number': account_number,
-                    'user_name': main_system.current_user['user_name'],
+                    'user_name': self.current_user['user_name'],
                     'balance': 0,
                     'withdraw_times': 0,
                     'extract': []
@@ -66,24 +66,24 @@ class Main_System:
                 Your agency is: 0001
                 Your account number is: {account_number}''')
 
-    def __enter_account__(self):
-        if not main_system.accounts:
+    def enter_account(self):
+        if not self.accounts:
                 print('''
                 You have no accounts yet! Please create one.''')
-        main_system.current_account = int(input('''
+        self.current_account = int(input('''
                 Agency: 0001
                 Choose an account number: '''))
-        if main_system.current_account < 0:
+        if self.current_account < 0:
             print('''
                 Invalid account number.''')
                     
         else:
-            main_system.current_user.update(main_system.accounts[main_system.current_account - 1])
+            self.current_user.update(self.accounts[self.current_account - 1])
             return False, False, True
 
-    def __withdraw__(self, withdraw_value=0):
-        idx = main_system.current_account - 1
-        account = main_system.accounts[idx]
+    def withdraw(self, withdraw_value=0):
+        idx = self.current_account - 1
+        account = self.accounts[idx]
         if withdraw_value <= 0:
             print('''
                 Please enter a positive value.              
@@ -103,12 +103,12 @@ class Main_System:
             print(f'''
                 Successful withdraw! Your balance: R$ {account['balance']}
             ''')
-            main_system.current_user.update(account)
+            self.current_user.update(account)
             return
 
-    def __deposit__(self, deposit_value=0):
-        idx = main_system.current_account - 1
-        account = main_system.accounts[idx]
+    def deposit(self, deposit_value=0):
+        idx = self.current_account - 1
+        account = self.accounts[idx]
         if deposit_value <= 0:
             print('Please enter a positive value.')
             return
@@ -119,10 +119,10 @@ class Main_System:
                 Balance: R$ {account['balance']}''')
             print(f'''                      
                 Successful deposit! Your balance: R$ {account['balance']}''')
-            main_system.current_user.update(account)
+            self.current_user.update(account)
             return
 
-    def __ask_menu__(self): 
+    def ask_menu(self): 
         end_menu = int(input('''      
                 What do you want to do?
                         
@@ -137,12 +137,12 @@ class Main_System:
                 Thanks for using FuBank system! See you later!''')
             exit()    
 
-    def __user_logout__(self): 
+    def user_logout(self): 
         print('''
                 Logging user out!''')
         return True, False, False
 
-    def __account_logout__(self): 
+    def account_logout(self): 
             print('''
                 Logging account out!''')
             return False, True, False
@@ -180,7 +180,7 @@ while True: #=== Main system loop ===
                 Birthday(dd/mm/yy): ''')
             address = input('''
                 Address(st - num - district - city / state): ''')
-            main_system.__new_user__(user_name, password, name, cpf, birthday, address)
+            main_system.new_user(user_name, password, name, cpf, birthday, address)
             continue
         else:
             print('''
@@ -210,12 +210,12 @@ while True: #=== Main system loop ===
                 Please enter a valid number.''')    
                 continue 
             if (menu == 1): 
-                menu_user, account_menu, main_menu = main_system.__enter_account__()                              
+                menu_user, account_menu, main_menu = main_system.enter_account()                              
             elif (menu == 2): 
-                main_system.__new_account__()
+                main_system.new_account()
                 continue
             elif (menu == 3):
-                menu_user, account_menu, main_menu = main_system.__user_logout__()
+                menu_user, account_menu, main_menu = main_system.user_logout()
             elif (menu == 4):
                 print('''
                 Thanks for using FuBank system! See you later!''')
@@ -251,7 +251,7 @@ while True: #=== Main system loop ===
                 print(f'''  
                 {''.join(main_system.current_user['extract'])}     
                                 ''')
-                main_menu = main_system.__ask_menu__() 
+                main_menu = main_system.ask_menu() 
             elif (menu == 2): 
                 try:
                     withdraw_value = int(input('''
@@ -260,8 +260,8 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')
                     continue
-                main_system.__withdraw__(withdraw_value)
-                main_menu = main_system.__ask_menu__()
+                main_system.withdraw(withdraw_value)
+                main_menu = main_system.ask_menu()
             elif (menu == 3): 
                 try:
                     deposit_value = int(input('''
@@ -270,10 +270,10 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')                       
                     continue
-                main_system.__deposit__(deposit_value)
-                main_menu = main_system.__ask_menu__()
+                main_system.deposit(deposit_value)
+                main_menu = main_system.ask_menu()
             elif (menu == 4): 
-                menu_user, account_menu, main_menu = main_system.__account_logout__() 
+                menu_user, account_menu, main_menu = main_system.account_logout() 
             elif (menu == 5): 
                 print('''
                 Thanks for using FuBank system! See you later!''')
