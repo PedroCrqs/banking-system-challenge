@@ -1,37 +1,31 @@
 #=== Banking System Challenge ===
 
-menu_user = True
-account_menu = True
+from datetime import datetime
 main_menu = True
 
-
-class Main_System:
-    
-    def __init__(self):
+class User:
+    def _init__(self):
         self.all_users = []
-        self.accounts =  []
         self.current_user = {}
-        self.current_account = {}
-        self.withdraw_limit = 500
-        self.WITHDRAW_TIMES_LIMIT = 3
-        
-    def new_user(self, user_name, password, name, cpf:int, birthday:int, address):
-        if (user_name and password and name and cpf and birthday and address):
-            new_user = {
-                    'user_name': user_name,
-                    'password': password,
-                    'name': name,
-                    'cpf': cpf,
-                    'birthday': birthday,
-                    'address': address,
-                }
-            print('''
-                User registered successfuly!''')
-            self.all_users.append(new_user)
-        else:
-            print('''
-                Please fill in all fields.''')
+        self.menu_user = True
 
+    def new_user(self, user_name, password, name, cpf:int, birthday:int, address):
+            if (user_name and password and name and cpf and birthday and address):
+                new_user = {
+                        'user_name': user_name,
+                        'password': password,
+                        'name': name,
+                        'cpf': cpf,
+                        'birthday': birthday,
+                        'address': address,
+                    }
+                print('''
+                    User registered successfuly!''')
+                self.all_users.append(new_user)
+            else:
+                print('''
+                    Please fill in all fields.''')
+    
     def login(self, user_name='', password=''):
         if (user_name == '' or password == ''):
                 print('''
@@ -49,7 +43,20 @@ class Main_System:
                 print('''
                 Invalid username or password.''')
                 return True, False, False
+            
+    def user_logout(self): 
+        print('''
+            Logging user out!''')
+        self.menu_user = False
+        return
                     
+class Account: 
+    def __init__(self):
+        self.accounts =  []
+        self.current_account = {}
+        self.withdraw_limit = 500
+        self.WITHDRAW_TIMES_LIMIT = 3
+        self.account_menu = True
                                  
     def new_account(self):
         account_number = len(self.accounts) + 1
@@ -136,11 +143,6 @@ class Main_System:
             print('''
                 Thanks for using FuBank system! See you later!''')
             exit()    
-
-    def user_logout(self): 
-        print('''
-                Logging user out!''')
-        return True, False, False
 
     def account_logout(self): 
             print('''
