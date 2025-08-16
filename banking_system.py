@@ -1,62 +1,139 @@
 #=== Banking System Challenge ===
 
 from datetime import datetime
-main_menu = True
 
 class User:
-    def _init__(self):
-        self.all_users = []
-        self.current_user = {}
-        self.menu_user = True
+    def __init__(self, user_name, password, complete_name, cpf, address):
+        self.user_name = user_name
+        self.password = password
+        self.complete_name = complete_name
+        self.cpf = cpf
+        self.address = address
 
-    def new_user(self, user_name, password, name, cpf:int, birthday:int, address):
-            if (user_name and password and name and cpf and birthday and address):
-                new_user = {
-                        'user_name': user_name,
-                        'password': password,
-                        'name': name,
-                        'cpf': cpf,
-                        'birthday': birthday,
-                        'address': address,
-                    }
-                print('''
-                    User registered successfuly!''')
-                self.all_users.append(new_user)
-            else:
-                print('''
-                    Please fill in all fields.''')
-    
-    def login(self, user_name='', password=''):
-        if (user_name == '' or password == ''):
-                print('''
-                Please enter a valid username and password.''')
-        elif (user_name and password):
-            found = False
-            for user in self.all_users:
-                if user_name == user['user_name'] and password == user['password']:
-                    print('''
-                Login successful!''')
-                    found = True
-                    self.current_user = user
-                    return False, True, True
-            if not found:
-                print('''
-                Invalid username or password.''')
-                return True, False, False
-            
-    def user_logout(self): 
-        print('''
-            Logging user out!''')
-        self.menu_user = False
-        return
-                    
-class Account: 
+class UserManager:
     def __init__(self):
+        self.users = []
+        self.current_user = {}
+
+    def register_user(self, user_name, password, complete_name, cpf, address):    
+        user = User(user_name, password, complete_name, cpf, address)
+        self.users.append(user)
+        return user
+        
+    def login(self, user_name, password):
+        for user in self.users:
+            if user_name == user.user_name and password == user.password:
+                self.current_user = user
+                return True
+            return False
+
+class Account:
+    def __init__(self, number, user_name):
+        self.agency = 1
+        self.number = number
+        self.balance = 0
+        self.user_name = user_name
+        self.extract = []
+        self.withdraw_times = 0
+        self.withdraw_limit = 500
+        self.WITHDRAW_TIMES_LIMIT = 3
+
+class AccountManager:
+    def __init__(self):
+        self.accounts = []
+        self.current_account = {}
+
+    def create_account(self, number, user_name):
+        account = Account(number, user_name)
+        self.accounts.append(account)
+        return account
+
+class BankingUI:
+    def __init__(self, user_manager):
+        self.user_manager = user_manager                   
+
+    def run_main_menu(self):
+        while True:
+            try:
+                choice = self._show_main_menu()
+                if choice == 1:
+                    if self._handle_login():
+                        self.run_user_menu()
+                elif choice == 2:
+                    self._handle_registration()
+                elif choice == 3:
+                    print("Goodbye!")
+                    break
+                else:
+                    print("Invalid option!")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
+
+    def run_user_menu(self):
+         while True:
+            choice = self._show_user_menu()
+            if choice == 1:
+                self.run_account_menu()
+            elif choice == 2:
+                self._handle_create_account()
+            elif choice == 3:
+                self._handle_logout()
+                break
+    
+    def run_account_menu(self):
+        while True:
+            choice = self._show_account_menu()
+            if choice == 1:
+                self._handle_extract()
+            elif choice == 2:
+                self._handle_withdraw()
+            elif choice == 3:
+                self._handle_deposit()
+            elif choice == 4:
+                break  
+            # ...
+    
+    def _show_main_menu(self):
+        print("""
+        === FuBank ===
+        1. Login
+        2. Register
+        3. Exit
+        """)
+        return int(input("Choose: "))
+    
+    def _handle_login(self):
+        username = input("Username: ")
+        password = input("Password: ")
+        
+        if self.user_manager.login(username, password):
+            print("Login successful!")
+            return True
+        else:
+            print("Invalid credentials!")
+            return False
+
+def main():
+    user_manager = UserManager()
+    account_manager = AccountManager()
+    ui = BankingUI(user_manager, account_manager)
+    
+    ui.run_main_menu() 
+
+if __name__ == "__main__":
+    main()                   
+
+
+class Account: 
+    def __init__(self, current_user=None):
+        self.current_user = current_user
         self.accounts =  []
         self.current_account = {}
         self.withdraw_limit = 500
         self.WITHDRAW_TIMES_LIMIT = 3
         self.account_menu = True
+        self.main_menu = True
                                  
     def new_account(self):
         account_number = len(self.accounts) + 1
@@ -73,20 +150,24 @@ class Account:
                 Your agency is: 0001
                 Your account number is: {account_number}''')
 
-    def enter_account(self):
+    def enter_account(self, enter_account_ui):
+        current_account = enter_account_ui()
+        if current_account <= len(self.accounts):
+            self.current_account = self.accounts[current_account - 1]
+            return True
+       
+    def enter_account_ui(self):
         if not self.accounts:
                 print('''
                 You have no accounts yet! Please create one.''')
-        self.current_account = int(input('''
+        current_account = int(input('''
                 Agency: 0001
                 Choose an account number: '''))
-        if self.current_account < 0:
+        if current_account < 0:
             print('''
                 Invalid account number.''')
-                    
-        else:
-            self.current_user.update(self.accounts[self.current_account - 1])
-            return False, False, True
+        return current_account
+
 
     def withdraw(self, withdraw_value=0):
         idx = self.current_account - 1
@@ -149,13 +230,14 @@ class Account:
                 Logging account out!''')
             return False, True, False
 
-main_system = Main_System()
+user = User()
+account = Account(user.current_user)
 
 while True: #=== Main system loop ===
 
     #=== Login page Loop ===
 
-    while(menu_user):
+    while(user.menu_user):
         welcome = int(input('''
                 Hello, welcome to the FuBank!
                     1. for login
@@ -163,27 +245,19 @@ while True: #=== Main system loop ===
                         
                 '''))
         if (welcome == 1):
-            user_name = input('''
-                Username: ''')
-            password = input('''
-                Password: ''')
-            menu_user, account_menu, main_menu = main_system.__login__(user_name, password)
+            login_success = user.login(user.login_ui)
+            if login_success:
+                user.menu_user = False
+                print('Login successful!')
+            else:
+                print('''
+                    Invalid username or password.''')  
             continue                     
+        
         elif (welcome == 2):
-            user_name = input('''
-                Choose a username: ''')
-            password = input('''
-                Choose a password: ''')
-            name = input('''
-                Complete name: ''')
-            cpf = input('''
-                CPF: ''')
-            birthday = input('''
-                Birthday(dd/mm/yy): ''')
-            address = input('''
-                Address(st - num - district - city / state): ''')
-            main_system.new_user(user_name, password, name, cpf, birthday, address)
+            user.new_user(user.new_user_ui)
             continue
+        
         else:
             print('''
                 Please enter a valid option.''')
@@ -193,12 +267,12 @@ while True: #=== Main system loop ===
 
     #=== Account Menu Loop ===
 
-    while(account_menu): 
+    while(account.account_menu): 
         current_account = {}
-        if (main_system.current_user):
+        if (user.current_user):
             try:
                 menu = int(input(f'''     
-                Hello {main_system.current_user['name'].split()[0]}! Chose one number:
+                Hello {user.current_user['name'].split()[0]}! Chose one number:
 
                     1. for Enter an existent account
                     2. for Create a new account
@@ -212,12 +286,12 @@ while True: #=== Main system loop ===
                 Please enter a valid number.''')    
                 continue 
             if (menu == 1): 
-                menu_user, account_menu, main_menu = main_system.enter_account()                              
+                account.main_menu = account.enter_account(account.enter_account_ui())                              
             elif (menu == 2): 
-                main_system.new_account()
+                account.new_account()
                 continue
             elif (menu == 3):
-                menu_user, account_menu, main_menu = main_system.user_logout()
+                menu_user, account_menu, main_menu = user.user_logout()
             elif (menu == 4):
                 print('''
                 Thanks for using FuBank system! See you later!''')
@@ -231,11 +305,11 @@ while True: #=== Main system loop ===
 
     #=== Transaction Menu Loop ===
 
-    while (main_menu):
-        if (main_system.current_user):
+    while (account.main_menu):
+        if (account.current_account):
             try:
                 menu = int(input(f'''     
-                Welcome to account number {main_system.current_user['account_number']}! Choose one number:
+                Welcome to account number {account.current_user['account_number']}! Choose one number:
 
                     1. for Extract
                     2. for Withdraw
@@ -251,9 +325,9 @@ while True: #=== Main system loop ===
                 continue 
             if (menu == 1): 
                 print(f'''  
-                {''.join(main_system.current_user['extract'])}     
+                {''.join(account.current_account['extract'])}     
                                 ''')
-                main_menu = main_system.ask_menu() 
+                main_menu = account.ask_menu() 
             elif (menu == 2): 
                 try:
                     withdraw_value = int(input('''
@@ -262,8 +336,8 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')
                     continue
-                main_system.withdraw(withdraw_value)
-                main_menu = main_system.ask_menu()
+                account.withdraw(withdraw_value)
+                main_menu = account.ask_menu()
             elif (menu == 3): 
                 try:
                     deposit_value = int(input('''
@@ -272,10 +346,10 @@ while True: #=== Main system loop ===
                     print('''
                 Please enter a valid number.''')                       
                     continue
-                main_system.deposit(deposit_value)
-                main_menu = main_system.ask_menu()
+                account.deposit(deposit_value)
+                main_menu = account.ask_menu()
             elif (menu == 4): 
-                menu_user, account_menu, main_menu = main_system.account_logout() 
+                menu_user, account_menu, main_menu = account.account_logout() 
             elif (menu == 5): 
                 print('''
                 Thanks for using FuBank system! See you later!''')
