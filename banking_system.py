@@ -3,13 +3,12 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-class User:
-    def __init__(self, user_name, password, complete_name, cpf, address):
+class Costumer:
+    def __init__(self, user_name, password, address):
         self._user_name = user_name
         self._password = password
-        self.complete_name = complete_name
-        self._cpf = cpf
         self.address = address
+        self.accounts = []
 
     @property
     def user_name(self):
@@ -18,18 +17,39 @@ class User:
     @property
     def password(self):
         return self._password
-    
+
+class PhisicalPerson(Costumer):
+    def __init__(self, user_name, password, complete_name, cpf, address):
+        super().__init__(user_name, password, address)
+        self.complete_name = complete_name
+        self._cpf = cpf
+
     @property
     def cpf(self):
         return self._cpf
 
-class UserManager:
+class LegalEntity(Costumer):
+    def __init__(self, user_name, password, company_name, cnpj, address):
+        super().__init__(user_name, password, address)
+        self.company_name = company_name
+        self._cnpj = cnpj
+
+    @property
+    def cnpj(self):
+        return self._cnpj            
+
+class CostumerManager:
     def __init__(self):
         self.users = []
         self.current_user = {}
 
-    def register_user(self, user_name, password, complete_name, cpf, address):    
-        user = User(user_name, password, complete_name, cpf, address)
+    def register_phisical_person(self, user_name, password, complete_name, cpf, address):
+        user = PhisicalPerson(user_name, password, complete_name, cpf, address)
+        self.users.append(user)
+        return user
+
+    def register_legal_entity(self, user_name, password, company_name, cnpj, address):
+        user = LegalEntity(user_name, password, company_name, cnpj, address)
         self.users.append(user)
         return user
         
@@ -41,11 +61,11 @@ class UserManager:
         return False
 
 class Account:
-    def __init__(self, number, user_name):
+    def __init__(self, number, costumer):
         self._agency = 1
         self._number = number
         self._balance = 0
-        self._user_name = user_name
+        self._costumer = costumer
         self.withdraw_times = 0
         self.withdraw_limit = 500
         self.WITHDRAW_TIMES_LIMIT = 3
@@ -72,9 +92,9 @@ class AccountManager:
         self.accounts = []
         self.current_account = {}
 
-    def create_account(self, user_name):
+    def create_account(self, costumer):
         account_number = len(self.accounts) + 1
-        account = Account(account_number, user_name)
+        account = Account(account_number, costumer)
         self.accounts.append(account)
         return account
     
@@ -199,23 +219,33 @@ class BankingUI:
             return False            
 
     def _handle_registration(self):
-        username = input("Username: ")
-        password = input("Password: ")
-        complete_name = input("Complete Name: ")
-        cpf = input("CPF: ")
-        address = input("Address: ")
+        user = input('''Chose user type:
+        1. Physical Person
+        2. Legal Entity''') 
 
-        user = self.user_manager.register_user(username, password, complete_name, cpf, address)
-        if user:
+        if user == '1':
+            username = input("Username: ")
+            password = input("Password: ")
+            complete_name = input("Complete Name: ")
+            cpf = input("CPF: ")
+            address = input("Address: ")
             print("Registration successful!")
-            return True
+            return self._register_physical_person(username, password, complete_name, cpf, address)
+        elif user == '2':
+            username = input("Username: ")
+            password = input("Password: ")
+            company_name = input("Company Name: ")
+            cnpj = input("CNPJ: ")
+            address = input("Address: ")
+            print("Registration successful!")
+            return self._register_legal_entity(username, password, company_name, cnpj, address)
         else:
             print("Error during registration.")
             return False
 
     def _show_user_menu(self):
         print(f"""
-        === Welcome {self.user_manager.current_user.complete_name} ===
+        === Welcome {self.user_manager.current_user.user_name} ===
         1. Enter Account
         2. Create Account
         3. Logout
@@ -268,7 +298,7 @@ class BankingUI:
         print("Deposit successful!")
 
 def main():
-    user_manager = UserManager()
+    user_manager = CostumerManager()
     account_manager = AccountManager()
     ui = BankingUI(user_manager, account_manager)
     
