@@ -1,14 +1,27 @@
 #=== Banking System Challenge ===
 
 from datetime import datetime
+from abc import ABC, abstractmethod
 
 class User:
     def __init__(self, user_name, password, complete_name, cpf, address):
-        self.user_name = user_name
-        self.password = password
+        self._user_name = user_name
+        self._password = password
         self.complete_name = complete_name
-        self.cpf = cpf
+        self._cpf = cpf
         self.address = address
+
+    @property
+    def user_name(self):
+        return self._user_name
+
+    @property
+    def password(self):
+        return self._password
+    
+    @property
+    def cpf(self):
+        return self._cpf
 
 class UserManager:
     def __init__(self):
@@ -25,27 +38,34 @@ class UserManager:
             if user_name == user.user_name and password == user.password:
                 self.current_user = user
                 return True
-            return False
-
-    def merge_user_changes(self):
-        user_name = self.current_user.user_name
-        password = self.current_user.password
-        for user in self.users:
-            if user.user_name == user_name:
-                user.password = password
-                user = self.current_user
-                return user
+        return False
 
 class Account:
     def __init__(self, number, user_name):
-        self.agency = 1
-        self.number = number
-        self.balance = 0
-        self.user_name = user_name
+        self._agency = 1
+        self._number = number
+        self._balance = 0
+        self._user_name = user_name
         self.extract = []
         self.withdraw_times = 0
         self.withdraw_limit = 500
         self.WITHDRAW_TIMES_LIMIT = 3
+
+    @property
+    def agency(self):
+        return self._agency
+
+    @property
+    def number(self):
+        return self._number
+
+    @property
+    def balance(self):
+        return self._balance
+
+    @property
+    def user_name(self):
+        return self._user_name
 
 class AccountManager:
     def __init__(self):
@@ -63,10 +83,10 @@ class AccountManager:
             if account.number == account_number:
                 self.current_account = account
                 return True
-            return False
+        return False
 
     def deposit(self, amount):
-        self.current_account.balance += amount
+        self.current_account._balance += amount
         self.current_account.extract.append({
             "date": datetime.now(),
             "type": "deposit",
@@ -74,10 +94,10 @@ class AccountManager:
         })
 
     def withdraw(self, amount):
-        if (self.current_account.withdraw_times >= self.current_account.WITHDRAW_TIMES_LIMIT or amount > self.current_account.balance or self.current_account.withdraw_limit < amount):
+        if (self.current_account.withdraw_times >= self.current_account.WITHDRAW_TIMES_LIMIT or amount > self.current_account._balance or self.current_account.withdraw_limit < amount):
             return False
         else:
-            self.current_account.balance -= amount
+            self.current_account._balance -= amount
             self.current_account.extract.append({
                 "date": datetime.now(),
                 "type": "withdraw",
@@ -86,11 +106,21 @@ class AccountManager:
             self.current_account.withdraw_times += 1
             return True
 
+class Transaction(ABC):
+    def __init__(self, amount):
+        self.date = datetime.now()
+        self.amount = amount
+
+    @abstractmethod
+    def register(self, account):
+        pass    
+
+
 class BankingUI:
     def __init__(self, user_manager, account_manager):
         self.user_manager = user_manager
         self.account_manager = account_manager
-
+    
     def run_main_menu(self):
         while True:
             try:
@@ -212,7 +242,6 @@ class BankingUI:
     def _handle_withdraw(self):
         amount = float(input("Enter amount to withdraw: "))
         if self.account_manager.withdraw(amount):
-            self.user_manager.merge_user_changes()
             print("Withdrawal successful!")
         else:
             print("Unauthorized transaction!")
@@ -220,7 +249,6 @@ class BankingUI:
     def _handle_deposit(self):
         amount = float(input("Enter amount to deposit: "))
         self.account_manager.deposit(amount)
-        self.user_manager.merge_user_changes()
         print("Deposit successful!")
 
 def main():
