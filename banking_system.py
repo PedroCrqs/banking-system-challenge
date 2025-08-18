@@ -46,10 +46,10 @@ class Account:
         self._number = number
         self._balance = 0
         self._user_name = user_name
-        self.extract = []
         self.withdraw_times = 0
         self.withdraw_limit = 500
         self.WITHDRAW_TIMES_LIMIT = 3
+        self.history = History()
 
     @property
     def agency(self):
@@ -85,36 +85,49 @@ class AccountManager:
                 return True
         return False
 
-    def deposit(self, amount):
-        self.current_account._balance += amount
-        self.current_account.extract.append({
-            "date": datetime.now(),
-            "type": "deposit",
-            "amount": amount
-        })
-
-    def withdraw(self, amount):
-        if (self.current_account.withdraw_times >= self.current_account.WITHDRAW_TIMES_LIMIT or amount > self.current_account._balance or self.current_account.withdraw_limit < amount):
-            return False
-        else:
-            self.current_account._balance -= amount
-            self.current_account.extract.append({
-                "date": datetime.now(),
-                "type": "withdraw",
-                "amount": amount
-            })
-            self.current_account.withdraw_times += 1
-            return True
-
 class Transaction(ABC):
     def __init__(self, amount):
-        self.date = datetime.now()
-        self.amount = amount
+        self._date = datetime.now()
+        self._amount = amount
+
+    @property
+    def date(self):
+        return self._date
+
+    @property
+    def amount(self):
+        return self._amount    
 
     @abstractmethod
     def register(self, account):
         pass    
 
+class Deposit(Transaction):
+    def register(self, account):
+        account._balance += self.amount
+        account.history.add_transaction(self)
+
+class Withdraw(Transaction):
+    def register(self, account):
+        if account.withdraw_times < account.WITHDRAW_TIMES_LIMIT and self.amount <= account.balance and self.amount <= account.withdraw_limit:
+            account._balance -= self.amount
+            account.withdraw_times += 1
+            account.history.add_transaction(self)
+            return True
+        else:
+            return False
+
+class History:
+    def __init__(self):
+        self.transactions = []
+
+    def add_transaction(self, transaction):
+        self.transactions.append(transaction)    
+
+    def generate_report(self, type_filter=None):
+        for transaction in self.transactions:
+            if type_filter is None or isinstance(transaction, type_filter): 
+                yield transaction
 
 class BankingUI:
     def __init__(self, user_manager, account_manager):
@@ -234,21 +247,24 @@ class BankingUI:
     
     def _handle_extract(self):
         account = self.account_manager.current_account
-        print(f"Account Extract for {account.user_name}:")
-        for transaction in account.extract:
-            print(f"{transaction['date']} - {transaction['type']}: {transaction['amount']}")
+        print(f"\nAccount Extract for account number {account.number}:")
+        for transaction in account.history.generate_report():
+            print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+              f"{transaction.__class__.__name__}: {transaction.amount}")
         print(f"Current Balance: {account.balance}")
 
     def _handle_withdraw(self):
         amount = float(input("Enter amount to withdraw: "))
-        if self.account_manager.withdraw(amount):
+        withdraw = Withdraw(amount)
+        if withdraw.register(self.account_manager.current_account):
             print("Withdrawal successful!")
         else:
             print("Unauthorized transaction!")
 
     def _handle_deposit(self):
         amount = float(input("Enter amount to deposit: "))
-        self.account_manager.deposit(amount)
+        deposit = Deposit(amount)
+        deposit.register(self.account_manager.current_account)
         print("Deposit successful!")
 
 def main():
