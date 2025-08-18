@@ -27,6 +27,15 @@ class UserManager:
                 return True
             return False
 
+    def merge_user_changes(self):
+        user_name = self.current_user.user_name
+        password = self.current_user.password
+        for user in self.users:
+            if user.user_name == user_name:
+                user.password = password
+                user = self.current_user
+                return user
+
 class Account:
     def __init__(self, number, user_name):
         self.agency = 1
@@ -43,14 +52,44 @@ class AccountManager:
         self.accounts = []
         self.current_account = {}
 
-    def create_account(self, number, user_name):
-        account = Account(number, user_name)
+    def create_account(self, user_name):
+        account_number = len(self.accounts) + 1
+        account = Account(account_number, user_name)
         self.accounts.append(account)
         return account
+    
+    def login(self, account_number):
+        for account in self.accounts:
+            if account.number == account_number:
+                self.current_account = account
+                return True
+            return False
+
+    def deposit(self, amount):
+        self.current_account.balance += amount
+        self.current_account.extract.append({
+            "date": datetime.now(),
+            "type": "deposit",
+            "amount": amount
+        })
+
+    def withdraw(self, amount):
+        if (self.current_account.withdraw_times >= self.current_account.WITHDRAW_TIMES_LIMIT or amount > self.current_account.balance or self.current_account.withdraw_limit < amount):
+            return False
+        else:
+            self.current_account.balance -= amount
+            self.current_account.extract.append({
+                "date": datetime.now(),
+                "type": "withdraw",
+                "amount": amount
+            })
+            self.current_account.withdraw_times += 1
+            return True
 
 class BankingUI:
-    def __init__(self, user_manager):
-        self.user_manager = user_manager                   
+    def __init__(self, user_manager, account_manager):
+        self.user_manager = user_manager
+        self.account_manager = account_manager
 
     def run_main_menu(self):
         while True:
@@ -74,11 +113,13 @@ class BankingUI:
          while True:
             choice = self._show_user_menu()
             if choice == 1:
-                self.run_account_menu()
+                if self._handle_account_login():
+                    self.run_account_menu()
+                else:
+                    continue
             elif choice == 2:
                 self._handle_create_account()
             elif choice == 3:
-                self._handle_logout()
                 break
     
     def run_account_menu(self):
@@ -112,7 +153,75 @@ class BankingUI:
             return True
         else:
             print("Invalid credentials!")
+            return False            
+
+    def _handle_registration(self):
+        username = input("Username: ")
+        password = input("Password: ")
+        complete_name = input("Complete Name: ")
+        cpf = input("CPF: ")
+        address = input("Address: ")
+
+        user = self.user_manager.register_user(username, password, complete_name, cpf, address)
+        if user:
+            print("Registration successful!")
+            return True
+        else:
+            print("Error during registration.")
             return False
+
+    def _show_user_menu(self):
+        print(f"""
+        === Welcome {self.user_manager.current_user.complete_name} ===
+        1. Enter Account
+        2. Create Account
+        3. Logout
+        """)
+        return int(input("Choose: "))
+
+    def _handle_create_account(self):
+        account = self.account_manager.create_account(self.user_manager.current_user.user_name)
+        print(f"Account created successfully! Your account number is {account.number}.")
+
+    def _handle_account_login(self):
+        account_number = int(input("Enter your account number: "))
+        if self.account_manager.login(account_number):
+            print("Account login successful!")
+            return True
+        else:
+            print("Invalid account number!")
+            return False
+
+    def _show_account_menu(self):
+        print(f"""
+        === Account Menu ===
+        1. Extract
+        2. Withdraw
+        3. Deposit
+        4. Logout
+        """)
+        return int(input("Choose: "))
+    
+    def _handle_extract(self):
+        account = self.account_manager.current_account
+        print(f"Account Extract for {account.user_name}:")
+        for transaction in account.extract:
+            print(f"{transaction['date']} - {transaction['type']}: {transaction['amount']}")
+        print(f"Current Balance: {account.balance}")
+
+    def _handle_withdraw(self):
+        amount = float(input("Enter amount to withdraw: "))
+        if self.account_manager.withdraw(amount):
+            self.user_manager.merge_user_changes()
+            print("Withdrawal successful!")
+        else:
+            print("Unauthorized transaction!")
+
+    def _handle_deposit(self):
+        amount = float(input("Enter amount to deposit: "))
+        self.account_manager.deposit(amount)
+        self.user_manager.merge_user_changes()
+        print("Deposit successful!")
 
 def main():
     user_manager = UserManager()
@@ -122,241 +231,5 @@ def main():
     ui.run_main_menu() 
 
 if __name__ == "__main__":
-    main()                   
+    main()  
 
-
-class Account: 
-    def __init__(self, current_user=None):
-        self.current_user = current_user
-        self.accounts =  []
-        self.current_account = {}
-        self.withdraw_limit = 500
-        self.WITHDRAW_TIMES_LIMIT = 3
-        self.account_menu = True
-        self.main_menu = True
-                                 
-    def new_account(self):
-        account_number = len(self.accounts) + 1
-        self.accounts.append({
-                    'agency': '0001',
-                    'account_number': account_number,
-                    'user_name': self.current_user['user_name'],
-                    'balance': 0,
-                    'withdraw_times': 0,
-                    'extract': []
-                })
-        print(f'''
-                Account created successfuly!
-                Your agency is: 0001
-                Your account number is: {account_number}''')
-
-    def enter_account(self, enter_account_ui):
-        current_account = enter_account_ui()
-        if current_account <= len(self.accounts):
-            self.current_account = self.accounts[current_account - 1]
-            return True
-       
-    def enter_account_ui(self):
-        if not self.accounts:
-                print('''
-                You have no accounts yet! Please create one.''')
-        current_account = int(input('''
-                Agency: 0001
-                Choose an account number: '''))
-        if current_account < 0:
-            print('''
-                Invalid account number.''')
-        return current_account
-
-
-    def withdraw(self, withdraw_value=0):
-        idx = self.current_account - 1
-        account = self.accounts[idx]
-        if withdraw_value <= 0:
-            print('''
-                Please enter a positive value.              
-            ''')
-            return
-        elif (withdraw_value > account['balance'] or withdraw_value > self.withdraw_limit or account['withdraw_times'] >= self.WITHDRAW_TIMES_LIMIT):
-            print('''
-                Unauthorized transaction              
-            ''')
-            return
-        else:
-            account['balance'] -= withdraw_value
-            account['withdraw_times'] += 1
-            account['extract'].append(f'''
-                Withdraw: R$ -{withdraw_value}
-                Balance: R$ {account['balance']}''')
-            print(f'''
-                Successful withdraw! Your balance: R$ {account['balance']}
-            ''')
-            self.current_user.update(account)
-            return
-
-    def deposit(self, deposit_value=0):
-        idx = self.current_account - 1
-        account = self.accounts[idx]
-        if deposit_value <= 0:
-            print('Please enter a positive value.')
-            return
-        else:
-            account['balance'] += deposit_value
-            account['extract'].append(f'''
-                Deposit: R$ +{deposit_value}
-                Balance: R$ {account['balance']}''')
-            print(f'''                      
-                Successful deposit! Your balance: R$ {account['balance']}''')
-            self.current_user.update(account)
-            return
-
-    def ask_menu(self): 
-        end_menu = int(input('''      
-                What do you want to do?
-                        
-                    1. for menu
-                    2. for end
-                        
-                '''))
-        if (end_menu == 1):
-            return True
-        elif (end_menu == 2):
-            print('''
-                Thanks for using FuBank system! See you later!''')
-            exit()    
-
-    def account_logout(self): 
-            print('''
-                Logging account out!''')
-            return False, True, False
-
-user = User()
-account = Account(user.current_user)
-
-while True: #=== Main system loop ===
-
-    #=== Login page Loop ===
-
-    while(user.menu_user):
-        welcome = int(input('''
-                Hello, welcome to the FuBank!
-                    1. for login
-                    2. for register
-                        
-                '''))
-        if (welcome == 1):
-            login_success = user.login(user.login_ui)
-            if login_success:
-                user.menu_user = False
-                print('Login successful!')
-            else:
-                print('''
-                    Invalid username or password.''')  
-            continue                     
-        
-        elif (welcome == 2):
-            user.new_user(user.new_user_ui)
-            continue
-        
-        else:
-            print('''
-                Please enter a valid option.''')
-            continue
-
-    #=== Login page Loop End ===
-
-    #=== Account Menu Loop ===
-
-    while(account.account_menu): 
-        current_account = {}
-        if (user.current_user):
-            try:
-                menu = int(input(f'''     
-                Hello {user.current_user['name'].split()[0]}! Chose one number:
-
-                    1. for Enter an existent account
-                    2. for Create a new account
-                    3. for Logout
-                    4. for End
-                    
-                ''')
-            )
-            except ValueError:
-                print('''
-                Please enter a valid number.''')    
-                continue 
-            if (menu == 1): 
-                account.main_menu = account.enter_account(account.enter_account_ui())                              
-            elif (menu == 2): 
-                account.new_account()
-                continue
-            elif (menu == 3):
-                menu_user, account_menu, main_menu = user.user_logout()
-            elif (menu == 4):
-                print('''
-                Thanks for using FuBank system! See you later!''')
-                exit()
-            else:    
-                print('''
-                Please chose one valid option''')
-                continue
-
-    #=== Account Menu Loop End ===            
-
-    #=== Transaction Menu Loop ===
-
-    while (account.main_menu):
-        if (account.current_account):
-            try:
-                menu = int(input(f'''     
-                Welcome to account number {account.current_user['account_number']}! Choose one number:
-
-                    1. for Extract
-                    2. for Withdraw
-                    3. for Deposit
-                    4. for Logout
-                    5. for End
-
-                ''')
-            )
-            except ValueError:
-                print('''
-                Please enter a valid number.''')    
-                continue 
-            if (menu == 1): 
-                print(f'''  
-                {''.join(account.current_account['extract'])}     
-                                ''')
-                main_menu = account.ask_menu() 
-            elif (menu == 2): 
-                try:
-                    withdraw_value = int(input('''
-                Value: R$ '''))
-                except ValueError:
-                    print('''
-                Please enter a valid number.''')
-                    continue
-                account.withdraw(withdraw_value)
-                main_menu = account.ask_menu()
-            elif (menu == 3): 
-                try:
-                    deposit_value = int(input('''
-                Value: R$ '''))
-                except ValueError:
-                    print('''
-                Please enter a valid number.''')                       
-                    continue
-                account.deposit(deposit_value)
-                main_menu = account.ask_menu()
-            elif (menu == 4): 
-                menu_user, account_menu, main_menu = account.account_logout() 
-            elif (menu == 5): 
-                print('''
-                Thanks for using FuBank system! See you later!''')
-                exit()
-            else:    
-                print('''
-                Please chose one valid option''')
-                continue
-
-#=== Transaction Menu Loop ends ===
