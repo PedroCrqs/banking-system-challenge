@@ -43,7 +43,7 @@ class CostumerManager:
         self.users = []
         self.current_user = {}
 
-    def register_phisical_person(self, user_name, password, complete_name, cpf, address):
+    def register_physical_person(self, user_name, password, complete_name, cpf, address):
         user = PhisicalPerson(user_name, password, complete_name, cpf, address)
         self.users.append(user)
         return user
@@ -84,8 +84,23 @@ class Account:
         return self._balance
 
     @property
-    def user_name(self):
-        return self._user_name
+    def costumer(self):
+        return self._costumer
+
+# class CheckingAccount(Account):
+    # def __init__(self, number, costumer, withdraw_limit=500, withdraw_times_limit=3):
+    #     super().__init__(number, costumer)
+    #     self._withdraw_limit = withdraw_limit
+    #     self._WITHDRAW_TIMES_LIMIT = withdraw_times_limit  
+    #     self.withdraw_times = 0
+
+    # @property
+    # def withdraw_limit(self):
+    #     return self._withdraw_limit
+
+    # @property
+    # def WITHDRAW_TIMES_LIMIT(self):
+    #     return self._WITHDRAW_TIMES_LIMIT    
 
 class AccountManager:
     def __init__(self):
@@ -96,6 +111,7 @@ class AccountManager:
         account_number = len(self.accounts) + 1
         account = Account(account_number, costumer)
         self.accounts.append(account)
+        costumer.accounts.append(account)
         return account
     
     def login(self, account_number):
@@ -150,8 +166,8 @@ class History:
                 yield transaction
 
 class BankingUI:
-    def __init__(self, user_manager, account_manager):
-        self.user_manager = user_manager
+    def __init__(self, costumer_manager, account_manager):
+        self.costumer_manager = costumer_manager
         self.account_manager = account_manager
     
     def run_main_menu(self):
@@ -211,7 +227,7 @@ class BankingUI:
         username = input("Username: ")
         password = input("Password: ")
         
-        if self.user_manager.login(username, password):
+        if self.costumer_manager.login(username, password):
             print("Login successful!")
             return True
         else:
@@ -219,9 +235,12 @@ class BankingUI:
             return False            
 
     def _handle_registration(self):
-        user = input('''Chose user type:
+        
+        user = input('''User type:
         1. Physical Person
-        2. Legal Entity''') 
+        2. Legal Entity
+        
+        Choose: ''') 
 
         if user == '1':
             username = input("Username: ")
@@ -230,7 +249,7 @@ class BankingUI:
             cpf = input("CPF: ")
             address = input("Address: ")
             print("Registration successful!")
-            return self._register_physical_person(username, password, complete_name, cpf, address)
+            return self.costumer_manager.register_physical_person(username, password, complete_name, cpf, address)
         elif user == '2':
             username = input("Username: ")
             password = input("Password: ")
@@ -238,14 +257,14 @@ class BankingUI:
             cnpj = input("CNPJ: ")
             address = input("Address: ")
             print("Registration successful!")
-            return self._register_legal_entity(username, password, company_name, cnpj, address)
+            return self.costumer_manager.register_legal_entity(username, password, company_name, cnpj, address)
         else:
             print("Error during registration.")
             return False
 
     def _show_user_menu(self):
         print(f"""
-        === Welcome {self.user_manager.current_user.user_name} ===
+        === Welcome {self.costumer_manager.current_user.user_name} ===
         1. Enter Account
         2. Create Account
         3. Logout
@@ -253,7 +272,7 @@ class BankingUI:
         return int(input("Choose: "))
 
     def _handle_create_account(self):
-        account = self.account_manager.create_account(self.user_manager.current_user.user_name)
+        account = self.account_manager.create_account(self.costumer_manager.current_user)
         print(f"Account created successfully! Your account number is {account.number}.")
 
     def _handle_account_login(self):
