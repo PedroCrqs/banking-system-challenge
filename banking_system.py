@@ -45,7 +45,7 @@ class CustomerManager:
 
     def register_physical_person(self, user_name, password, complete_name, cpf, address):
         user = PhysicalPerson(user_name, password, complete_name, cpf, address)
-        if cpf not in [user.cpf for user in self.users if isinstance(user, PhysicalPerson)]:
+        if cpf not in [user.cpf for user in self.users if isinstance(user, PhysicalPerson)] and user_name not in [user.user_name for user in self.users]:
             self.users.append(user)
             return True
         else:
@@ -53,7 +53,7 @@ class CustomerManager:
 
     def register_legal_entity(self, user_name, password, company_name, cnpj, address):
         user = LegalEntity(user_name, password, company_name, cnpj, address)
-        if cnpj not in [user.cnpj for user in self.users if isinstance(user, LegalEntity)]:
+        if cnpj not in [user.cnpj for user in self.users if isinstance(user, LegalEntity)] and user_name not in [user.user_name for user in self.users]:
             self.users.append(user)
             return True
         else:
@@ -90,6 +90,12 @@ class Account:
     def customer(self):
         return self._customer
 
+    def _debit(self, amount):
+        self._balance -= amount
+
+    def _credit(self, amount):
+        self._balance += amount
+
 class CheckingAccount(Account):
     def __init__(self, number, customer, account_type):
         super().__init__(number, customer)
@@ -106,7 +112,6 @@ class CheckingAccount(Account):
     def validate_withdrawal(self, amount):
         if self.withdraw_times < self._WITHDRAW_TIMES_LIMIT and amount <= self.balance and amount <= self._withdraw_limit:
             self.withdraw_times += 1
-            self._balance -= amount
             return True
         else:
             return False
@@ -122,10 +127,10 @@ class AccountManager:
         self.accounts.append(account)
         customer.accounts.append(account)
         return account
-    
-    def login(self, account_number):
+
+    def login(self, account_number, customer):
         for account in self.accounts:
-            if account.number == account_number:
+            if account.number == account_number and account.customer == customer:
                 self.current_account = account
                 return True
         return False
@@ -149,13 +154,31 @@ class Transaction(ABC):
 
 class Deposit(Transaction):
     def register(self, account):
-        account._balance += self.amount
+        account._credit(self.amount)
         account.history.add_transaction(self)
+        return True
 
 class Withdraw(Transaction):
     def register(self, account):
         if account.validate_withdrawal(self.amount):
+            account._debit(self.amount)
             account.history.add_transaction(self)
+            return True
+        else:
+            return False
+
+class Transfer(Transaction):
+    def __init__(self, amount, source_account, target_account):
+        super().__init__(amount)
+        self.target_account = target_account
+        self.source_account = source_account
+
+    def register(self):
+        if self.source_account.balance >= self.amount and self.target_account != self.source_account:
+            self.source_account._debit(self.amount)
+            self.target_account._credit(self.amount)
+            self.source_account.history.add_transaction(self)
+            self.target_account.history.add_transaction(self)
             return True
         else:
             return False
@@ -222,6 +245,8 @@ class BankingUI:
             elif choice == 3:
                 self._handle_deposit()
             elif choice == 4:
+                self._handle_transfer()
+            elif choice == 5:
                 break  
             # ...
     
@@ -299,7 +324,7 @@ Choose: ''')
 
     def _handle_account_login(self):
         account_number = int(input("Enter your account number: "))
-        if self.account_manager.login(account_number):
+        if self.account_manager.login(account_number, self.customer_manager.current_user):
             print("Account login successful!")
             return True
         else:
@@ -312,7 +337,8 @@ Choose: ''')
         1. Extract
         2. Withdraw
         3. Deposit
-        4. Logout
+        4. Transfer
+        5. Logout
         """)
         return int(input("Choose: "))
     
@@ -323,22 +349,36 @@ Choose: ''')
         1. Full extract
         2. Deposits extract
         3. Withdrawals extract
+        4. Transfers extract
         ''')
         choose = int(input("Choose: "))
         if choose == 1:
             print(f"\nAccount Extract for account number {account.number}:")
             total_withdrawals = 0
             total_deposits = 0
+            total_sent = 0
+            total_received = 0
             for transaction in iter(account.history):
-                print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
-                f"{transaction.__class__.__name__}: ${transaction.amount}")
+                if isinstance(transaction, (Withdraw, Deposit)):
+                    print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                    f"{transaction.__class__.__name__}: ${transaction.amount}")
                 if isinstance(transaction, Withdraw):
                     total_withdrawals += transaction.amount
                 elif isinstance(transaction, Deposit):
                     total_deposits += transaction.amount
+                elif isinstance(transaction, Transfer) and transaction.source_account == account:
+                    total_sent += transaction.amount
+                    print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                    f"Transfer Sent: ${transaction.amount} to Account {transaction.target_account.number}")
+                elif isinstance(transaction, Transfer) and transaction.target_account == account:
+                    total_received += transaction.amount
+                    print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                    f"Transfer Received: ${transaction.amount} from Account {transaction.source_account.number}")
             print(f'''
 Total Deposits: ${total_deposits}
 Total Withdrawals: ${total_withdrawals}
+Total Sent: ${total_sent}
+Total Received: ${total_received}
 ''')
             print(f"Current Balance: ${account.balance}")
         elif choose == 2:
@@ -359,6 +399,24 @@ Total Withdrawals: ${total_withdrawals}
                 f"{transaction.__class__.__name__}: ${transaction.amount}")
             print(f"Total Withdrawals: ${total}")    
             print(f"Current Balance: ${account.balance}")
+        elif choose == 4:
+            print(f"\nTransfers Extract for account number {account.number}:")
+            total_sent = 0
+            total_received = 0
+            for transaction in account.history.generate_report(Transfer):
+                if transaction.source_account == account:
+                    total_sent += transaction.amount
+                    print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                    f"Transfer Sent: ${transaction.amount} to Account {transaction.target_account.number}")
+                elif transaction.target_account == account:
+                    total_received += transaction.amount
+                    print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                    f"Transfer Received: ${transaction.amount} from Account {transaction.source_account.number}")
+            print(f'''
+Total Sent: ${total_sent}
+Total Received: ${total_received}
+Current Balance: ${account.balance}
+''')
         else:
             print("Invalid option!")
 
@@ -373,8 +431,28 @@ Total Withdrawals: ${total_withdrawals}
     def _handle_deposit(self):
         amount = float(input("Enter amount to deposit: $"))
         deposit = Deposit(amount)
-        deposit.register(self.account_manager.current_account)
-        print("Deposit successful!")
+        if deposit.register(self.account_manager.current_account):
+            print("Deposit successful!")
+        else:
+            print("Unauthorized transaction!")
+
+    def _handle_transfer(self):
+        target_account_number = int(input("Enter target account number: "))
+        amount = float(input("Enter amount to transfer: $"))
+        target_account = None
+        for account in self.account_manager.accounts:
+            if account.number == target_account_number:
+                target_account = account
+                break
+        if target_account:
+            source_account = self.account_manager.current_account
+            transfer = Transfer(amount, source_account, target_account)
+            if transfer.register():
+                print("Transfer successful!")
+            else:
+                print("Unauthorized transaction!")
+        else:
+            print("Target account not found!")    
 
 def main():
     user_manager = CustomerManager()
