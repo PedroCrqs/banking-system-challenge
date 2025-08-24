@@ -3,7 +3,7 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-class Costumer:
+class Customer:
     def __init__(self, user_name, password, address):
         self._user_name = user_name
         self._password = password
@@ -18,7 +18,7 @@ class Costumer:
     def password(self):
         return self._password
 
-class PhisicalPerson(Costumer):
+class PhysicalPerson(Customer):
     def __init__(self, user_name, password, complete_name, cpf, address):
         super().__init__(user_name, password, address)
         self.complete_name = complete_name
@@ -28,7 +28,7 @@ class PhisicalPerson(Costumer):
     def cpf(self):
         return self._cpf
 
-class LegalEntity(Costumer):
+class LegalEntity(Customer):
     def __init__(self, user_name, password, company_name, cnpj, address):
         super().__init__(user_name, password, address)
         self.company_name = company_name
@@ -38,13 +38,13 @@ class LegalEntity(Costumer):
     def cnpj(self):
         return self._cnpj            
 
-class CostumerManager:
+class CustomerManager:
     def __init__(self):
         self.users = []
-        self.current_user = {}
+        self.current_user = None
 
     def register_physical_person(self, user_name, password, complete_name, cpf, address):
-        user = PhisicalPerson(user_name, password, complete_name, cpf, address)
+        user = PhysicalPerson(user_name, password, complete_name, cpf, address)
         self.users.append(user)
         return user
 
@@ -61,14 +61,11 @@ class CostumerManager:
         return False
 
 class Account:
-    def __init__(self, number, costumer):
+    def __init__(self, number, customer):
         self._agency = 1
         self._number = number
         self._balance = 0
-        self._costumer = costumer
-        self.withdraw_times = 0
-        self.withdraw_limit = 500
-        self.WITHDRAW_TIMES_LIMIT = 3
+        self._customer = customer
         self.history = History()
 
     @property
@@ -84,34 +81,40 @@ class Account:
         return self._balance
 
     @property
-    def costumer(self):
-        return self._costumer
+    def customer(self):
+        return self._customer
 
-# class CheckingAccount(Account):
-    # def __init__(self, number, costumer, withdraw_limit=500, withdraw_times_limit=3):
-    #     super().__init__(number, costumer)
-    #     self._withdraw_limit = withdraw_limit
-    #     self._WITHDRAW_TIMES_LIMIT = withdraw_times_limit  
-    #     self.withdraw_times = 0
+class CheckingAccount(Account):
+    def __init__(self, number, customer, account_type):
+        super().__init__(number, customer)
+        self.account_type = account_type
+        if self.account_type == "Silver":
+            self._withdraw_limit = 500
+            self._WITHDRAW_TIMES_LIMIT = 3
+            self.withdraw_times = 0
+        elif self.account_type == "Gold":
+            self._withdraw_limit = 1000
+            self._WITHDRAW_TIMES_LIMIT = 5
+            self.withdraw_times = 0
 
-    # @property
-    # def withdraw_limit(self):
-    #     return self._withdraw_limit
-
-    # @property
-    # def WITHDRAW_TIMES_LIMIT(self):
-    #     return self._WITHDRAW_TIMES_LIMIT    
+    def validate_withdrawal(self, amount):
+        if self.withdraw_times < self._WITHDRAW_TIMES_LIMIT and amount <= self.balance and amount <= self._withdraw_limit:
+            self.withdraw_times += 1
+            self._balance -= amount
+            return True
+        else:
+            return False
 
 class AccountManager:
     def __init__(self):
         self.accounts = []
-        self.current_account = {}
+        self.current_account = None
 
-    def create_account(self, costumer):
+    def create_account(self, customer, account_type):
         account_number = len(self.accounts) + 1
-        account = Account(account_number, costumer)
+        account = CheckingAccount(account_number, customer, account_type)
         self.accounts.append(account)
-        costumer.accounts.append(account)
+        customer.accounts.append(account)
         return account
     
     def login(self, account_number):
@@ -145,9 +148,7 @@ class Deposit(Transaction):
 
 class Withdraw(Transaction):
     def register(self, account):
-        if account.withdraw_times < account.WITHDRAW_TIMES_LIMIT and self.amount <= account.balance and self.amount <= account.withdraw_limit:
-            account._balance -= self.amount
-            account.withdraw_times += 1
+        if account.validate_withdrawal(self.amount):
             account.history.add_transaction(self)
             return True
         else:
@@ -158,7 +159,11 @@ class History:
         self.transactions = []
 
     def add_transaction(self, transaction):
-        self.transactions.append(transaction)    
+        self.transactions.append(transaction)
+
+    def __iter__(self):
+        for transaction in self.transactions:
+            yield transaction
 
     def generate_report(self, type_filter=None):
         for transaction in self.transactions:
@@ -166,8 +171,8 @@ class History:
                 yield transaction
 
 class BankingUI:
-    def __init__(self, costumer_manager, account_manager):
-        self.costumer_manager = costumer_manager
+    def __init__(self, customer_manager, account_manager):
+        self.customer_manager = customer_manager
         self.account_manager = account_manager
     
     def run_main_menu(self):
@@ -226,8 +231,8 @@ class BankingUI:
     def _handle_login(self):
         username = input("Username: ")
         password = input("Password: ")
-        
-        if self.costumer_manager.login(username, password):
+
+        if self.customer_manager.login(username, password):
             print("Login successful!")
             return True
         else:
@@ -235,36 +240,35 @@ class BankingUI:
             return False            
 
     def _handle_registration(self):
-        
-        user = input('''User type:
+        choice = input('''User type:
         1. Physical Person
         2. Legal Entity
         
-        Choose: ''') 
+Choose: ''') 
 
-        if user == '1':
+        if choice == '1':
             username = input("Username: ")
             password = input("Password: ")
             complete_name = input("Complete Name: ")
             cpf = input("CPF: ")
             address = input("Address: ")
             print("Registration successful!")
-            return self.costumer_manager.register_physical_person(username, password, complete_name, cpf, address)
-        elif user == '2':
+            return self.customer_manager.register_physical_person(username, password, complete_name, cpf, address)
+        elif choice == '2':
             username = input("Username: ")
             password = input("Password: ")
             company_name = input("Company Name: ")
             cnpj = input("CNPJ: ")
             address = input("Address: ")
             print("Registration successful!")
-            return self.costumer_manager.register_legal_entity(username, password, company_name, cnpj, address)
+            return self.customer_manager.register_legal_entity(username, password, company_name, cnpj, address)
         else:
             print("Error during registration.")
             return False
 
     def _show_user_menu(self):
         print(f"""
-        === Welcome {self.costumer_manager.current_user.user_name} ===
+        === Welcome {self.customer_manager.current_user.user_name} ===
         1. Enter Account
         2. Create Account
         3. Logout
@@ -272,7 +276,16 @@ class BankingUI:
         return int(input("Choose: "))
 
     def _handle_create_account(self):
-        account = self.account_manager.create_account(self.costumer_manager.current_user)
+        choice = input('''
+        === Enter account type === 
+        1. Silver Account
+        2. Gold Account
+Choose: ''')
+        if choice == '1':
+            account_type = "Silver"
+        elif choice == '2':
+            account_type = "Gold"
+        account = self.account_manager.create_account(self.customer_manager.current_user, account_type)
         print(f"Account created successfully! Your account number is {account.number}.")
 
     def _handle_account_login(self):
@@ -296,14 +309,42 @@ class BankingUI:
     
     def _handle_extract(self):
         account = self.account_manager.current_account
-        print(f"\nAccount Extract for account number {account.number}:")
-        for transaction in account.history.generate_report():
-            print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
-              f"{transaction.__class__.__name__}: {transaction.amount}")
-        print(f"Current Balance: {account.balance}")
+        print('''
+        === Extract Menu ===
+        1. Full extract
+        2. Deposits extract
+        3. Withdrawals extract
+        ''')
+        choose = int(input("Choose: "))
+        if choose == 1:
+            print(f"\nAccount Extract for account number {account.number}:")
+            for transaction in iter(account.history):
+                print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                f"{transaction.__class__.__name__}: ${transaction.amount}")
+            print(f"Current Balance: ${account.balance}")
+        elif choose == 2:
+            print(f"\nDeposits Extract for account number {account.number}:")
+            total = 0
+            for transaction in account.history.generate_report(Deposit):
+                total += transaction.amount
+                print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                f"{transaction.__class__.__name__}: ${transaction.amount}")
+            print(f"Total Deposits: ${total}")
+            print(f"Current Balance: ${account.balance}")
+        elif choose == 3:
+            print(f"\nWithdrawals Extract for account number {account.number}:")
+            total = 0
+            for transaction in account.history.generate_report(Withdraw):
+                total += transaction.amount
+                print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
+                f"{transaction.__class__.__name__}: ${transaction.amount}")
+            print(f"Total Withdrawals: ${total}")    
+            print(f"Current Balance: ${account.balance}")
+        else:
+            print("Invalid option!")
 
     def _handle_withdraw(self):
-        amount = float(input("Enter amount to withdraw: "))
+        amount = float(input("Enter amount to withdraw: $"))
         withdraw = Withdraw(amount)
         if withdraw.register(self.account_manager.current_account):
             print("Withdrawal successful!")
@@ -311,13 +352,13 @@ class BankingUI:
             print("Unauthorized transaction!")
 
     def _handle_deposit(self):
-        amount = float(input("Enter amount to deposit: "))
+        amount = float(input("Enter amount to deposit: $"))
         deposit = Deposit(amount)
         deposit.register(self.account_manager.current_account)
         print("Deposit successful!")
 
 def main():
-    user_manager = CostumerManager()
+    user_manager = CustomerManager()
     account_manager = AccountManager()
     ui = BankingUI(user_manager, account_manager)
     
