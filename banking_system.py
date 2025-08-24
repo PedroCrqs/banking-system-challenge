@@ -45,14 +45,20 @@ class CustomerManager:
 
     def register_physical_person(self, user_name, password, complete_name, cpf, address):
         user = PhysicalPerson(user_name, password, complete_name, cpf, address)
-        self.users.append(user)
-        return user
+        if cpf not in [user.cpf for user in self.users if isinstance(user, PhysicalPerson)]:
+            self.users.append(user)
+            return True
+        else:
+            return False
 
     def register_legal_entity(self, user_name, password, company_name, cnpj, address):
         user = LegalEntity(user_name, password, company_name, cnpj, address)
-        self.users.append(user)
-        return user
-        
+        if cnpj not in [user.cnpj for user in self.users if isinstance(user, LegalEntity)]:
+            self.users.append(user)
+            return True
+        else:
+            return False
+
     def login(self, user_name, password):
         for user in self.users:
             if user_name == user.user_name and password == user.password:
@@ -252,19 +258,22 @@ Choose: ''')
             complete_name = input("Complete Name: ")
             cpf = input("CPF: ")
             address = input("Address: ")
-            print("Registration successful!")
-            return self.customer_manager.register_physical_person(username, password, complete_name, cpf, address)
+            if self.customer_manager.register_physical_person(username, password, complete_name, cpf, address):
+                print("Registration successful!")
+            else:
+                print("CPF already registered.")
         elif choice == '2':
             username = input("Username: ")
             password = input("Password: ")
             company_name = input("Company Name: ")
             cnpj = input("CNPJ: ")
             address = input("Address: ")
-            print("Registration successful!")
-            return self.customer_manager.register_legal_entity(username, password, company_name, cnpj, address)
+            if self.customer_manager.register_legal_entity(username, password, company_name, cnpj, address):
+                print("Registration successful!")
+            else:
+                print("CNPJ already registered.")
         else:
             print("Error during registration.")
-            return False
 
     def _show_user_menu(self):
         print(f"""
@@ -318,9 +327,19 @@ Choose: ''')
         choose = int(input("Choose: "))
         if choose == 1:
             print(f"\nAccount Extract for account number {account.number}:")
+            total_withdrawals = 0
+            total_deposits = 0
             for transaction in iter(account.history):
                 print(f"{transaction.date.strftime('%d/%m/%Y %H:%M:%S')} - "
                 f"{transaction.__class__.__name__}: ${transaction.amount}")
+                if isinstance(transaction, Withdraw):
+                    total_withdrawals += transaction.amount
+                elif isinstance(transaction, Deposit):
+                    total_deposits += transaction.amount
+            print(f'''
+Total Deposits: ${total_deposits}
+Total Withdrawals: ${total_withdrawals}
+''')
             print(f"Current Balance: ${account.balance}")
         elif choose == 2:
             print(f"\nDeposits Extract for account number {account.number}:")
