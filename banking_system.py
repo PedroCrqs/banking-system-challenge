@@ -45,19 +45,29 @@ class CustomerManager:
 
     def register_physical_person(self, user_name, password, complete_name, cpf, address):
         user = PhysicalPerson(user_name, password, complete_name, cpf, address)
-        if cpf not in [user.cpf for user in self.users if isinstance(user, PhysicalPerson)] and user_name not in [user.user_name for user in self.users]:
+        if not self._is_already_registered(user_name, cpf, PhysicalPerson):
+            self.users.append(user)
+            return True
+        else:
+            return False
+        
+    def register_legal_entity(self, user_name, password, company_name, cnpj, address):
+        user = LegalEntity(user_name, password, company_name, cnpj, address)
+        if not self._is_already_registered(user_name, cnpj, LegalEntity):
             self.users.append(user)
             return True
         else:
             return False
 
-    def register_legal_entity(self, user_name, password, company_name, cnpj, address):
-        user = LegalEntity(user_name, password, company_name, cnpj, address)
-        if cnpj not in [user.cnpj for user in self.users if isinstance(user, LegalEntity)] and user_name not in [user.user_name for user in self.users]:
-            self.users.append(user)
-            return True
-        else:
-            return False
+    def _is_already_registered(self, user_name, identifier, class_type):
+        for user in self.users:
+            if user.user_name == user_name:
+                return True
+            if isinstance(user, class_type) and user.cpf == identifier:
+                return True
+            if isinstance(user, class_type) and user.cnpj == identifier:
+                return True
+        return False
 
     def login(self, user_name, password):
         for user in self.users:
