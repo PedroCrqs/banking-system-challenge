@@ -120,7 +120,7 @@ class CheckingAccount(Account):
             self.withdraw_times = 0
 
     def validate_withdrawal(self, amount):
-        if self.withdraw_times < self._WITHDRAW_TIMES_LIMIT and amount <= self.balance and amount <= self._withdraw_limit:
+        if self.withdraw_times < self._WITHDRAW_TIMES_LIMIT and amount <= self.balance and amount <= self._withdraw_limit and amount > 0:
             self.withdraw_times += 1
             return True
         else:
@@ -164,9 +164,12 @@ class Transaction(ABC):
 
 class Deposit(Transaction):
     def register(self, account):
-        account._credit(self.amount)
-        account.history.add_transaction(self)
-        return True
+        if self.amount <= 0:
+            return False
+        else: 
+            account._credit(self.amount)
+            account.history.add_transaction(self)
+            return True
 
 class Withdraw(Transaction):
     def register(self, account):
@@ -184,7 +187,7 @@ class Transfer(Transaction):
         self.source_account = source_account
 
     def register(self):
-        if self.source_account.balance >= self.amount and self.target_account != self.source_account:
+        if self.source_account.balance >= self.amount and self.target_account != self.source_account and self.amount > 0:
             self.source_account._debit(self.amount)
             self.target_account._credit(self.amount)
             self.source_account.history.add_transaction(self)
@@ -228,38 +231,51 @@ class BankingUI:
                     break
                 else:
                     print("Invalid option!")
-            except KeyboardInterrupt:
-                print("\nGoodbye!")
-                break
+            except ValueError:
+                print("\nInvalid option!")
+                continue
 
     def run_user_menu(self):
-         while True:
-            choice = self._show_user_menu()
-            if choice == 1:
-                if self._handle_account_login():
-                    self.run_account_menu()
+        while True:
+            try:
+                choice = self._show_user_menu()
+                if choice == 1:
+                    if self._handle_account_login():
+                        self.run_account_menu()
+                    else:
+                        continue
+                elif choice == 2:
+                    self._handle_create_account()
+                elif choice == 3:
+                    break
                 else:
+                    print("Invalid option!")
                     continue
-            elif choice == 2:
-                self._handle_create_account()
-            elif choice == 3:
-                break
+            except ValueError:
+                print("\nInvalid option!")
+                continue   
     
     def run_account_menu(self):
         while True:
-            choice = self._show_account_menu()
-            if choice == 1:
-                self._handle_extract()
-            elif choice == 2:
-                self._handle_withdraw()
-            elif choice == 3:
-                self._handle_deposit()
-            elif choice == 4:
-                self._handle_transfer()
-            elif choice == 5:
-                break  
-            # ...
-    
+            try:
+                choice = self._show_account_menu()
+                if choice == 1:
+                    self._handle_extract()
+                elif choice == 2:
+                    self._handle_withdraw()
+                elif choice == 3:
+                    self._handle_deposit()
+                elif choice == 4:
+                    self._handle_transfer()
+                elif choice == 5:
+                    break 
+                else:
+                    print("Invalid option!")
+                    continue 
+            except ValueError:
+                print('\nInvalid option!')
+                continue
+
     def _show_main_menu(self):
         print("""
         === FuBank ===
@@ -293,7 +309,10 @@ Choose: ''')
             complete_name = input("Complete Name: ")
             cpf = input("CPF: ")
             address = input("Address: ")
-            if self.customer_manager.register_physical_person(username, password, complete_name, cpf, address):
+            if not all ([username, password, complete_name, cpf, address]):
+                print('Please fill all the fields!')
+                return
+            elif self.customer_manager.register_physical_person(username, password, complete_name, cpf, address):
                 print("Registration successful!")
             else:
                 print("CPF already registered.")
@@ -303,7 +322,9 @@ Choose: ''')
             company_name = input("Company Name: ")
             cnpj = input("CNPJ: ")
             address = input("Address: ")
-            if self.customer_manager.register_legal_entity(username, password, company_name, cnpj, address):
+            if not all ([username, password, company_name, cnpj, address]):
+                print('Please fill all the fields!')
+            elif self.customer_manager.register_legal_entity(username, password, company_name, cnpj, address):
                 print("Registration successful!")
             else:
                 print("CNPJ already registered.")
@@ -325,12 +346,19 @@ Choose: ''')
         1. Silver Account
         2. Gold Account
 Choose: ''')
-        if choice == '1':
-            account_type = "Silver"
-        elif choice == '2':
-            account_type = "Gold"
+        try:
+            if choice == '1':
+                account_type = "Silver"
+            elif choice == '2':
+                account_type = "Gold"
+            else:
+                print('Invalid option!')
+                return
+        except ValueError:
+            print('Invalid option!')            
         account = self.account_manager.create_account(self.customer_manager.current_user, account_type)
         print(f"Account created successfully! Your account number is {account.number}.")
+
 
     def _handle_account_login(self):
         account_number = int(input("Enter your account number: "))
@@ -431,7 +459,13 @@ Current Balance: ${account.balance}
             print("Invalid option!")
 
     def _handle_withdraw(self):
-        amount = float(input("Enter amount to withdraw: $"))
+        try:
+            amount = float(input("Enter amount to withdraw: $"))
+            if amount <= 0:
+                print('Please enter a valid value!')
+                return
+        except ValueError:
+            print("Please enter a valid value!")
         withdraw = Withdraw(amount)
         if withdraw.register(self.account_manager.current_account):
             print("Withdrawal successful!")
@@ -439,16 +473,28 @@ Current Balance: ${account.balance}
             print("Unauthorized transaction!")
 
     def _handle_deposit(self):
-        amount = float(input("Enter amount to deposit: $"))
-        deposit = Deposit(amount)
-        if deposit.register(self.account_manager.current_account):
-            print("Deposit successful!")
-        else:
-            print("Unauthorized transaction!")
+        try:
+            amount = float(input("Enter amount to deposit: $"))
+            if amount <= 0:
+                print('Please enter a valid value!')
+                return            
+            deposit = Deposit(amount)
+            if deposit.register(self.account_manager.current_account):
+                print("Deposit successful!")
+            else:
+                print("Unauthorized transaction!")
+        except ValueError:
+            print("Please enter a valid value!")       
 
     def _handle_transfer(self):
-        target_account_number = int(input("Enter target account number: "))
-        amount = float(input("Enter amount to transfer: $"))
+        try:
+            target_account_number = int(input("Enter target account number: "))
+            amount = float(input("Enter amount to transfer: $"))
+            if amount <= 0:
+                print('Please enter a valid value!')
+                return             
+        except ValueError:
+            print('Please enter a valid value!')    
         target_account = None
         for account in self.account_manager.accounts:
             if account.number == target_account_number:
